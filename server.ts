@@ -5,6 +5,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import cookieSession from "cookie-session";
+import https from "https";
+import fs from "fs";
+import os from "os";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,7 +57,7 @@ async function startServer() {
     name: 'session',
     keys: ['flowguard-secret-key'],
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    secure: true,
+    secure: process.env.NODE_ENV === 'production' || fs.existsSync(path.join(os.homedir(), ".office-addin-dev-certs", "localhost.crt")),
     sameSite: 'none'
   }));
 
@@ -215,9 +218,37 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  const homeDir = os.homedir();
+  const certLocations = [
+    path.join(homeDir, ".office-addin-dev-certs", "localhost.crt"),
+    path.join(process.cwd(), "localhost.crt"),
+    path.join(homeDir, "localhost.crt")
+  ];
+  const keyLocations = [
+    path.join(homeDir, ".office-addin-dev-certs", "localhost.key"),
+    path.join(process.cwd(), "localhost.key"),
+    path.join(homeDir, "localhost.key")
+  ];
+
+  let certPath = certLocations.find(loc => fs.existsSync(loc));
+  let keyPath = keyLocations.find(loc => fs.existsSync(loc));
+
+  if (certPath && keyPath) {
+    console.log(`[HTTPS] Found certificates at: ${certPath}`);
+    const options = {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath)
+    };
+    https.createServer(options, app).listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running on https://localhost:${PORT}`);
+    });
+  } else {
+    console.warn("[HTTPS] Certificates NOT found. Falling back to HTTP.");
+    console.log(`Checked locations: ${certLocations.join(", ")}`);
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`⚠️ Server running on http://localhost:${PORT} (Outlook will block this!)`);
+    });
+  }
 }
 
 startServer();
