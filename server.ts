@@ -3,6 +3,8 @@ import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import axios from "axios";
+import cookieSession from "cookie-session";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,9 +49,98 @@ seedSettings.run("rules", JSON.stringify({
 async function startServer() {
   const app = express();
   app.use(express.json());
+  
+  app.use(cookieSession({
+    name: 'session',
+    keys: ['flowguard-secret-key'],
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: true,
+    sameSite: 'none'
+  }));
+
   const PORT = 3000;
 
-  // API Routes
+  // --- OAuth Routes ---
+  app.get('/api/auth/url', (req, res) => {
+    const client_id = process.env.MICROSOFT_CLIENT_ID;
+    const redirect_uri = `${process.env.APP_URL}/auth/callback`;
+    
+    if (!client_id) {
+      return res.status(500).json({ error: "MICROSOFT_CLIENT_ID not configured" });
+    }
+
+    const params = new URLSearchParams({
+      client_id,
+      response_type: 'code',
+      redirect_uri,
+      response_mode: 'query',
+      scope: 'offline_access User.Read Mail.Read Mail.ReadWrite',
+      state: '12345'
+    });
+
+    res.json({ url: `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}` });
+  });
+
+  app.get('/auth/callback', async (req, res) => {
+    const { code } = req.query;
+    const client_id = process.env.MICROSOFT_CLIENT_ID;
+    const client_secret = process.env.MICROSOFT_CLIENT_SECRET;
+    const redirect_uri = `${process.env.APP_URL}/auth/callback`;
+
+    try {
+      const response = await axios.post('https://login.microsoftonline.com/common/oauth2/v2.0/token', new URLSearchParams({
+        client_id: client_id!,
+        client_secret: client_secret!,
+        code: code as string,
+        redirect_uri,
+        grant_type: 'authorization_code'
+      }));
+
+      // @ts-ignore
+      req.session.tokens = response.data;
+      
+      res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
+                window.close();
+              } else {
+                window.location.href = '/';
+              }
+            </script>
+            <p>Authentication successful. You can close this window.</p>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error("Token exchange failed", error.response?.data || error.message);
+      res.status(500).send("Authentication failed");
+    }
+  });
+
+  app.get('/api/me', (req, res) => {
+    // @ts-ignore
+    res.json({ authenticated: !!req.session?.tokens });
+  });
+
+  app.get('/api/graph/messages', async (req, res) => {
+    // @ts-ignore
+    const tokens = req.session?.tokens;
+    if (!tokens) return res.status(401).json({ error: "Not authenticated" });
+
+    try {
+      const response = await axios.get('https://graph.microsoft.com/v1.0/me/messages?$top=10&$select=subject,from,receivedDateTime,isRead', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` }
+      });
+      res.json(response.data.value);
+    } catch (error: any) {
+      res.status(error.response?.status || 500).json(error.response?.data || { error: "Graph API failed" });
+    }
+  });
+
+  // --- Deal Routes ---
   app.get("/api/deals", (req, res) => {
     const deals = db.prepare("SELECT * FROM deals ORDER BY updated_at DESC").all();
     res.json(deals);
@@ -75,6 +166,7 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // --- Settings & Audit ---
   app.get("/api/settings", (req, res) => {
     const settings = db.prepare("SELECT * FROM settings").all();
     const result = settings.reduce((acc: any, curr: any) => {
@@ -95,7 +187,16 @@ async function startServer() {
     res.json(logs);
   });
 
-  // Serve manifest.xml explicitly if needed, or let static handle it
+  app.get("/api/escalations", (req, res) => {
+    const overdueDeals = db.prepare(`
+      SELECT * FROM deals 
+      WHERE (stage = 'new' OR stage = 'waiting' OR stage = 'sent')
+      AND updated_at < datetime('now', '-24 hours')
+    `).all();
+    
+    res.json(overdueDeals);
+  });
+
   app.get("/manifest.xml", (req, res) => {
     res.sendFile(path.join(__dirname, "manifest.xml"));
   });

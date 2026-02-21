@@ -28,4 +28,4 @@ export interface EmailItem {
   isVip: boolean;
 }
 
-export type TabType = 'Inbox' | 'Pipeline' | 'Reminders' | 'Settings';
+export type TabType = 'Dashboard' | 'Inbox' | 'Pipeline' | 'Reminders' | 'Settings';

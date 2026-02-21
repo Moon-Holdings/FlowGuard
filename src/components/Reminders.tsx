@@ -7,37 +7,41 @@ export default function Reminders() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mocking reminders/escalations
-    setTimeout(() => {
-      setReminders([
-        {
-          id: 1,
-          type: 'escalation',
-          title: 'Overdue Quote: Dell Servers',
-          desc: 'No reply to nitzan@client.il in 48h. Manager draft ready.',
-          severity: 'high',
-          action: 'Approve Draft'
-        },
-        {
-          id: 2,
+    fetchEscalations();
+  }, []);
+
+  const fetchEscalations = async () => {
+    try {
+      const res = await fetch('/api/escalations');
+      const overdueDeals = await res.json();
+      
+      const mapped = overdueDeals.map((deal: any) => ({
+        id: deal.id,
+        type: 'escalation',
+        title: `Overdue: ${deal.customer_name}`,
+        desc: `Deal "${deal.subject}" has been idle for >24h in ${deal.stage} stage.`,
+        severity: 'high',
+        action: 'Approve Draft'
+      }));
+
+      // Add some static reminders if no real escalations
+      if (mapped.length === 0) {
+        mapped.push({
+          id: 'static-1',
           type: 'reminder',
           title: 'Draft Monitor',
           desc: '3 customer drafts idle for >30min.',
           severity: 'med',
           action: 'Review Drafts'
-        },
-        {
-          id: 3,
-          type: 'vendor',
-          title: 'Vendor ETA Missing',
-          desc: 'Cisco Catalyst quote sent 24h ago. No ETA received.',
-          severity: 'med',
-          action: 'Follow Up'
-        }
-      ]);
+        });
+      }
+
+      setReminders(mapped);
       setLoading(false);
-    }, 500);
-  }, []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const getSeverityStyles = (severity: string) => {
     switch (severity) {
@@ -55,25 +59,31 @@ export default function Reminders() {
     }
   };
 
+  if (loading) return null;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500">Reminders & Escalations</h2>
-        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-          {reminders.length} Active
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+          <Bell className="w-3.5 h-3.5" /> Active Alerts
+        </h2>
+        <span className="bg-red-500 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest">
+          {reminders.length} Critical
         </span>
       </div>
 
       {/* Summary Action */}
-      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-          <Send className="w-16 h-16 text-[#005FB8]" />
+      <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-6 opacity-10">
+          <Send className="w-20 h-20 text-blue-400" />
         </div>
-        <h3 className="text-lg font-bold text-gray-900 mb-1">Daily Summary</h3>
-        <p className="text-xs text-gray-500 mb-4">You have 4 overdue quotes and 3 pending vendor ETAs.</p>
-        <button className="w-full bg-[#005FB8] text-white py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#004a8f] transition-colors">
-          <MessageSquare className="w-4 h-4" /> Generate Manager Report
-        </button>
+        <div className="relative z-10">
+          <h3 className="text-xl font-black mb-1">Daily Pulse</h3>
+          <p className="text-xs text-slate-400 mb-6 leading-relaxed">You have {reminders.length} items requiring immediate attention to maintain SLA.</p>
+          <button className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-900/20">
+            <MessageSquare className="w-4 h-4" /> Generate Manager Report
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -82,42 +92,23 @@ export default function Reminders() {
           return (
             <motion.div 
               key={item.id}
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className={`p-4 rounded-2xl border flex gap-4 ${getSeverityStyles(item.severity)}`}
+              className={`p-5 rounded-3xl border flex gap-4 shadow-sm transition-all hover:shadow-md ${getSeverityStyles(item.severity)}`}
             >
               <div className="mt-1">
                 <Icon className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <h4 className="text-sm font-bold mb-1">{item.title}</h4>
-                <p className="text-xs opacity-80 mb-3">{item.desc}</p>
-                <button className="text-xs font-bold flex items-center gap-1 hover:underline">
-                  {item.action} <CheckCircle2 className="w-3 h-3" />
+                <h4 className="text-sm font-black mb-1">{item.title}</h4>
+                <p className="text-xs opacity-80 mb-4 leading-relaxed font-medium">{item.desc}</p>
+                <button className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 hover:underline">
+                  {item.action} <CheckCircle2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
           );
         })}
-      </div>
-
-      {/* Escalation Config Preview */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-2xl border border-gray-200">
-        <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-3 tracking-widest">Active Escalation Rules</h3>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-600">VIP No Reply (2h)</span>
-            <span className="text-green-600 font-bold">Active</span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-600">Quote Sent No ETA (24h)</span>
-            <span className="text-green-600 font-bold">Active</span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-600">Manager CC on Overdue</span>
-            <span className="text-gray-400">Disabled</span>
-          </div>
-        </div>
       </div>
     </div>
   );

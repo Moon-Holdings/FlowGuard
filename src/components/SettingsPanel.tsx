@@ -43,17 +43,21 @@ export default function SettingsPanel({ isRtl, setIsRtl }: SettingsPanelProps) {
     setAuditLogs(data);
   };
 
-  const downloadManifest = async () => {
+  const downloadManifest = async (type: 'local' | 'cloud') => {
     try {
-      // We fetch the manifest.xml from the server
       const response = await fetch('/manifest.xml');
-      const text = await response.text();
+      let text = await response.text();
+      
+      if (type === 'cloud') {
+        const cloudUrl = window.location.origin + "/";
+        text = text.replace(/https:\/\/localhost:3000\//g, cloudUrl);
+      }
       
       const blob = new Blob([text], { type: 'application/xml' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'manifest.xml';
+      a.download = `manifest-${type}.xml`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -109,15 +113,25 @@ export default function SettingsPanel({ isRtl, setIsRtl }: SettingsPanelProps) {
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
           <p className="text-sm font-bold mb-1">Outlook Manifest</p>
           <p className="text-[10px] text-gray-500 mb-4">
-            Download the configuration file to sideload FlowGuard into your Outlook. 
-            This version is configured for <span className="font-mono text-[#005FB8]">https://localhost:3000</span>.
+            Download the configuration file to sideload FlowGuard into your Outlook.
           </p>
-          <button 
-            onClick={downloadManifest}
-            className="w-full bg-[#005FB8] text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#004a8f] transition-all active:scale-95"
-          >
-            <Download className="w-4 h-4" /> Download manifest.xml
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={() => downloadManifest('local')}
+              className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl text-[10px] font-bold flex items-center justify-center gap-2 hover:bg-gray-200 transition-all"
+            >
+              <Download className="w-3 h-3" /> Localhost
+            </button>
+            <button 
+              onClick={() => downloadManifest('cloud')}
+              className="flex-1 bg-[#005FB8] text-white py-3 rounded-xl text-[10px] font-bold flex items-center justify-center gap-2 hover:bg-[#004a8f] transition-all"
+            >
+              <Download className="w-3 h-3" /> Cloud (Live)
+            </button>
+          </div>
+          <p className="mt-3 text-[9px] text-gray-400 text-center">
+            Use <span className="font-bold">Cloud</span> for the current preview or <span className="font-bold">Localhost</span> for your PC.
+          </p>
         </div>
       </section>
 
