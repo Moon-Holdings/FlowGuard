@@ -200,6 +200,14 @@ async function startServer() {
     res.json(overdueDeals);
   });
 
+  app.get("/icon-64.png", (req, res) => {
+    res.redirect("https://res-1.cdn.office.net/assets/mail/ic-addin-64.png");
+  });
+
+  app.get("/icon-128.png", (req, res) => {
+    res.redirect("https://res-1.cdn.office.net/assets/mail/ic-addin-128.png");
+  });
+
   app.get("/manifest.xml", (req, res) => {
     res.sendFile(path.join(__dirname, "manifest.xml"));
   });

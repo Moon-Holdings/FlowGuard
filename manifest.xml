@@ -6,15 +6,14 @@
   xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0" 
   xsi:type="MailApp">
   
-  <Id>d3b1c5e4-f2a1-4d8c-9b7a-6e5d4c3b2a1f</Id>
-  <Version>1.0.0.1</Version>
-  <ProviderName>FlowGuard IT</ProviderName>
+  <Id>f47ac10b-58cc-4372-a567-0e02b2c3d479</Id>
+  <Version>1.0.0.3</Version>
+  <ProviderName>FlowGuard</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="FlowGuard" />
+  <DisplayName DefaultValue="FlowGuard IT" />
   <Description DefaultValue="Enterprise IT sales triage and pipeline management." />
-  <IconUrl DefaultValue="https://picsum.photos/64/64" />
-  <HighResolutionIconUrl DefaultValue="https://picsum.photos/128/128" />
-  <SupportUrl DefaultValue="https://www.emet.co.il/support" />
+  <IconUrl DefaultValue="https://localhost:3000/icon-64.png" />
+  <HighResolutionIconUrl DefaultValue="https://localhost:3000/icon-128.png" />
   
   <Hosts>
     <Host Name="Mail" />
@@ -40,23 +39,11 @@
         <SourceLocation DefaultValue="https://localhost:3000/" />
       </PhoneSettings>
     </Form>
-    <Form xsi:type="ItemEdit">
-      <DesktopSettings>
-        <SourceLocation DefaultValue="https://localhost:3000/" />
-      </DesktopSettings>
-      <TabletSettings>
-        <SourceLocation DefaultValue="https://localhost:3000/" />
-      </TabletSettings>
-      <PhoneSettings>
-        <SourceLocation DefaultValue="https://localhost:3000/" />
-      </PhoneSettings>
-    </Form>
   </FormSettings>
   
   <Permissions>ReadWriteItem</Permissions>
   <Rule xsi:type="RuleCollection" Mode="Or">
     <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read" />
-    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Edit" />
   </Rule>
   
   <DisableEntityHighlighting>false</DisableEntityHighlighting>
@@ -94,57 +81,15 @@
               </Group>
             </OfficeTab>
           </ExtensionPoint>
-          
-          <ExtensionPoint xsi:type="MessageComposeCommandSurface">
-            <OfficeTab id="TabDefault">
-              <Group id="msgComposeGroup">
-                <Label resid="groupLabel" />
-                <Control xsi:type="Button" id="msgComposeOpenPaneButton">
-                  <Label resid="paneButtonLabel" />
-                  <Supertip>
-                    <Title resid="paneButtonLabel" />
-                    <Description resid="paneButtonDesc" />
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="icon16" />
-                    <bt:Image size="32" resid="icon32" />
-                    <bt:Image size="80" resid="icon80" />
-                  </Icon>
-                  <Action xsi:type="ShowTaskpane">
-                    <SourceLocation resid="taskpaneUrl" />
-                  </Action>
-                </Control>
-              </Group>
-            </OfficeTab>
-          </ExtensionPoint>
-
-          <ExtensionPoint xsi:type="Events">
-            <Event Type="ItemSend" FunctionName="onSendHandler" />
-          </ExtensionPoint>
         </DesktopFormFactor>
-        
-        <MobileFormFactor>
-          <ExtensionPoint xsi:type="MobileMessageReadCommandSurface">
-            <Group id="mobileMsgReadGroup">
-              <Label resid="groupLabel" />
-              <Control xsi:type="MobileButton" id="mobileMsgReadOpenPaneButton">
-                <Label resid="paneButtonLabel" />
-                <Icon resid="icon80" />
-                <Action xsi:type="ShowTaskpane">
-                  <SourceLocation resid="taskpaneUrl" />
-                </Action>
-              </Control>
-            </Group>
-          </ExtensionPoint>
-        </MobileFormFactor>
       </Host>
     </Hosts>
     
     <Resources>
       <bt:Images>
-        <bt:Image id="icon16" DefaultValue="https://picsum.photos/16/16" />
-        <bt:Image id="icon32" DefaultValue="https://picsum.photos/32/32" />
-        <bt:Image id="icon80" DefaultValue="https://picsum.photos/80/80" />
+        <bt:Image id="icon16" DefaultValue="https://res-1.cdn.office.net/assets/mail/ic-addin-16.png" />
+        <bt:Image id="icon32" DefaultValue="https://res-1.cdn.office.net/assets/mail/ic-addin-32.png" />
+        <bt:Image id="icon80" DefaultValue="https://res-1.cdn.office.net/assets/mail/ic-addin-80.png" />
       </bt:Images>
       <bt:Urls>
         <bt:Url id="funcFile" DefaultValue="https://localhost:3000/functions.html" />
