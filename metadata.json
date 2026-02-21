@@ -1,0 +1,5 @@
+{
+  "name": "FlowGuard Outlook Add-in",
+  "description": "Enterprise IT sales tool for Outlook to prevent forgotten replies, track pipeline, and automate escalations.",
+  "requestFramePermissions": []
+}

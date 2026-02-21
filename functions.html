@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" type="text/javascript"></script>
+    <script>
+        Office.onReady(function () {
+            // Function file is ready
+        });
+
+        function onSendHandler(event) {
+            const item = Office.context.mailbox.item;
+            
+            // 1. Check for keywords and attachments first
+            item.body.getAsync("text", function(result) {
+                const body = (result.value || "").toLowerCase();
+                const hasQuoteKeyword = body.includes("quote") || body.includes("price") || body.includes("rfq") || body.includes("bom");
+                
+                item.getAttachmentsAsync(function(attachmentResult) {
+                    const attachments = attachmentResult.value || [];
+                    
+                    if (hasQuoteKeyword && attachments.length === 0) {
+                        // Block immediately if keywords found but no attachments
+                        event.completed({
+                            allowEvent: false,
+                            errorMessage: "FlowGuard: You mentioned 'quote' or 'price' but no files are attached. Please add the quote file before sending."
+                        });
+                        return;
+                    }
+
+                    // 2. If checks pass, prompt with the checklist modal
+                    const dialogUrl = window.location.origin + "/checklist.html";
+                    
+                    Office.context.ui.displayDialogAsync(dialogUrl, { height: 60, width: 30, displayInIframe: true }, function(asyncResult) {
+                        if (asyncResult.status === Office.AsyncResultStatus.Failed) {
+                            // If dialog fails to open, allow send but warn or just allow
+                            console.error("Failed to open dialog: " + asyncResult.error.message);
+                            event.completed({ allowEvent: true });
+                            return;
+                        }
+
+                        const dialog = asyncResult.value;
+                        
+                        dialog.addEventHandler(Office.EventType.DialogMessageReceived, function(arg) {
+                            const message = JSON.parse(arg.message);
+                            if (message.confirmed) {
+                                event.completed({ allowEvent: true });
+                            } else {
+                                event.completed({ 
+                                    allowEvent: false, 
+                                    errorMessage: "FlowGuard: Send cancelled. Please complete the pre-send checklist." 
+                                });
+                            }
+                            dialog.close();
+                        });
+
+                        dialog.addEventHandler(Office.EventType.DialogEventReceived, function(arg) {
+                            // Handle dialog closed by user (X button)
+                            if (arg.error === 12006) {
+                                event.completed({ 
+                                    allowEvent: false, 
+                                    errorMessage: "FlowGuard: Pre-send checklist was closed. Send cancelled." 
+                                });
+                            }
+                        });
+                    });
+                });
+            });
+        }
+    </script>
+</head>
+<body>
+</body>
+</html>
