@@ -23,8 +23,14 @@ db.exec(`
     value REAL,
     stage TEXT, -- 'new', 'sent', 'waiting', 'won', 'lost'
     notes TEXT,
+    is_finished INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS finished_threads (
+    thread_id TEXT PRIMARY KEY,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS settings (
@@ -48,6 +54,7 @@ seedSettings.run("rules", JSON.stringify({
   urgent_keywords: ["quote", "RFQ", "price", "BOM"],
   manager_email: "manager@emetdorcom.co.il"
 }));
+seedSettings.run("gemini_enabled", JSON.stringify(true));
 
 async function startServer() {
   const app = express();
@@ -160,13 +167,24 @@ async function startServer() {
   });
 
   app.put("/api/deals/:id", (req, res) => {
-    const { stage, notes, value } = req.body;
+    const { stage, notes, value, is_finished } = req.body;
     db.prepare(
-      "UPDATE deals SET stage = COALESCE(?, stage), notes = COALESCE(?, notes), value = COALESCE(?, value), updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-    ).run(stage, notes, value, req.params.id);
+      "UPDATE deals SET stage = COALESCE(?, stage), notes = COALESCE(?, notes), value = COALESCE(?, value), is_finished = COALESCE(?, is_finished), updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).run(stage, notes, value, is_finished, req.params.id);
     
-    db.prepare("INSERT INTO audit_log (deal_id, action) VALUES (?, ?)").run(req.params.id, `Updated stage to ${stage}`);
+    db.prepare("INSERT INTO audit_log (deal_id, action) VALUES (?, ?)").run(req.params.id, `Updated deal ${is_finished ? 'to finished' : ''}`);
     res.json({ success: true });
+  });
+
+  app.post("/api/threads/finish", (req, res) => {
+    const { thread_id } = req.body;
+    db.prepare("INSERT OR IGNORE INTO finished_threads (thread_id) VALUES (?)").run(thread_id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/threads/finished", (req, res) => {
+    const threads = db.prepare("SELECT thread_id FROM finished_threads").all();
+    res.json(threads.map((t: any) => t.thread_id));
   });
 
   // --- Settings & Audit ---

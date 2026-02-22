@@ -5,6 +5,7 @@ export interface Deal {
   value: number;
   stage: 'new' | 'sent' | 'waiting' | 'won' | 'lost';
   notes: string;
+  is_finished: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -16,6 +17,7 @@ export interface Settings {
     urgent_keywords: string[];
     manager_email: string;
   };
+  gemini_enabled: boolean;
 }
 
 export interface EmailItem {
@@ -28,4 +30,4 @@ export interface EmailItem {
   isVip: boolean;
 }
 
-export type TabType = 'Dashboard' | 'Inbox' | 'Pipeline' | 'Reminders' | 'Settings';
+export type TabType = 'Dashboard' | 'Inbox' | 'Pipeline' | 'Tasks' | 'Settings';
